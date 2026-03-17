@@ -11,13 +11,13 @@ const CONFIG = {
         FIRST_ARTICLE: { x: 540, y: 1800 }
     },
     WAIT: {
-        INITIAL_LOAD: 5000,        // 初回ロード: 5秒
+        INITIAL_LOAD: 8000,        // 初回ロード: 5秒
         ARTICLE_LOAD: 2000,        // 記事ロード: 2秒
-        STAMP_CARD_LOAD: 1000,     // スタンプページロード: 1秒
-        NEXT_ARTICLE_LOAD: 1000,   // 次の記事のロード: 1秒
+        STAMP_CARD_LOAD: 2000,     // スタンプページロード: 1秒
+        NEXT_ARTICLE_LOAD: 2000,   // 次の記事のロード: 1秒
         RETRY_LOAD: 2000,          // エラー時のやり直し: 2秒
-        AFTER_SCROLL: 500,         // スクロール後: 0.5秒
-        AFTER_BUTTON_TAP: 500      // 続きを読むタップ後: 0.5秒
+        AFTER_SCROLL: 800,         // スクロール後: 0.5秒
+        AFTER_BUTTON_TAP: 800      // 続きを読むタップ後: 0.5秒
     }
 };
 
