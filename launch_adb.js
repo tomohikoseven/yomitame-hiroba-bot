@@ -11,7 +11,7 @@ const CONFIG = {
         FIRST_ARTICLE: { x: 540, y: 1800 }
     },
     WAIT: {
-        INITIAL_LOAD: 8000,        // 初回ロード: 5秒
+        INITIAL_LOAD: 12000,        // 初回ロード: 12秒
         ARTICLE_LOAD: 2000,        // 記事ロード: 2秒
         STAMP_CARD_LOAD: 2000,     // スタンプページロード: 1秒
         NEXT_ARTICLE_LOAD: 2000,   // 次の記事のロード: 1秒
