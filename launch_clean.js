@@ -14,12 +14,11 @@ const CONFIG = {
     },
     WAIT: {
         INITIAL_LOAD: 5000,
-        ARTICLE_LOAD: 2000,
-        STAMP_CARD_LOAD: 1000,
-        NEXT_ARTICLE_LOAD: 1000,
-        RETRY_LOAD: 2000,
-        AFTER_SCROLL: 500,
-        AFTER_BUTTON_TAP: 500
+        ARTICLE_LOAD: 1000,
+        STAMP_CARD_LOAD: 800,
+        NEXT_ARTICLE_LOAD: 800,
+        AFTER_SCROLL: 150,
+        AFTER_BUTTON_TAP: 150
     }
 };
 
@@ -111,19 +110,17 @@ class YomitameAutoReaderUseCase {
 
     async execute() {
         console.log('===== クリーンアーキテクチャ版 自動読了スクリプト =====');
-        
+
         console.log('記事一覧を表示...');
         this.device.openApp(this.config.LIST_URL, this.config.BRAVE_PKG);
         await this.device.sleep(this.config.WAIT.INITIAL_LOAD);
 
+        console.log('2番目の記事をタップ...');
+        this.device.tap(this.config.TAP_COORDS.FIRST_ARTICLE.x, this.config.TAP_COORDS.FIRST_ARTICLE.y);
+        await this.device.sleep(this.config.WAIT.ARTICLE_LOAD);
+
         for (let i = 1; i <= this.config.MAX_ARTICLES; i++) {
             console.log(`\n----- 記事 ${i} / ${this.config.MAX_ARTICLES} -----`);
-
-            if (i === 1) {
-                console.log('最初の記事をタップ...');
-                this.device.tap(this.config.TAP_COORDS.FIRST_ARTICLE.x, this.config.TAP_COORDS.FIRST_ARTICLE.y);
-                await this.device.sleep(this.config.WAIT.ARTICLE_LOAD);
-            }
 
             const success = await this._readOneArticle();
 
@@ -148,20 +145,21 @@ class YomitameAutoReaderUseCase {
 
         while (retryCount < 20) {
             await this._scrollDown();
-            await this.device.sleep(1000); // 画面安定待ち
 
             // アダプター層（ScreenParser）の機能を借りて、現在の画面からボタンを探す
             const xml = this.device.getScreenXml();
             const stampBtn = ScreenParser.getCoords(xml, "スタンプGET");
             const moreBtn = ScreenParser.getCoords(xml, "続きを読む");
 
-            if (stampBtn && stampBtn.y > 300) {
+            // if (stampBtn && stampBtn.y > 300) {
+            if (stampBtn) {
                 console.log('★スタンプGETボタンをタップ！');
                 this.device.tap(stampBtn.x, stampBtn.y);
                 return true; // 読了成功
             }
 
-            if (moreBtn && moreBtn.y > 300) {
+            // if (moreBtn && moreBtn.y > 300) {
+            if (moreBtn) {
                 console.log('「続きを読む」をタップ。');
                 this.device.tap(moreBtn.x, moreBtn.y);
                 await this.device.sleep(this.config.WAIT.AFTER_BUTTON_TAP);
@@ -175,9 +173,6 @@ class YomitameAutoReaderUseCase {
 
     // 内部ユースケース：次の記事へ遷移する
     async _goToNextArticle() {
-        await this.device.sleep(this.config.WAIT.STAMP_CARD_LOAD);
-        await this._scrollDown();
-        await this.device.sleep(1000);
 
         const xml = this.device.getScreenXml();
         const nextBtn = ScreenParser.getCoords(xml, "次の記事を読む");
