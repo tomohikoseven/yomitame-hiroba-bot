@@ -168,21 +168,16 @@ class YomitameBot {
     async moveToNextArticle() {
         await this._sleep(CONFIG.TIMEOUTS.STAMP_CARD_LOAD);
 
-        const nextBtn = await this.device.findCoordinates("次の記事を読む");
-        if (nextBtn) {
+        // 動作調整用
+        // console.log出力の座標で，CONFIG.COORDS.NEXT_ARTICLE.xと.yを調整する．
+        // xは画面の左上を原点として右方向の座標，yは左上を原点として下方向の座標．
+        // xとyは特定の座標になるはず． 
+        // console.log(nextBtn.x, nextBtn.y);
 
-            // 動作調整用
-            // console.log出力の座標で，CONFIG.COORDS.NEXT_ARTICLE.xと.yを調整する．
-            // xは画面の左上を原点として右方向の座標，yは左上を原点として下方向の座標．
-            // xとyは特定の座標になるはず． 
-            // console.log(nextBtn.x, nextBtn.y);
-
-            console.log('▶ 次の記事へ進みます');
-            this.device.tap(CONFIG.COORDS.NEXT_ARTICLE.x, CONFIG.COORDS.NEXT_ARTICLE.y);
-            await this._sleep(CONFIG.TIMEOUTS.NEXT_ARTICLE_LOAD);
-            return true;
-        }
-        return false;
+        console.log('▶ 次の記事へ進みます');
+        this.device.tap(CONFIG.COORDS.NEXT_ARTICLE.x, CONFIG.COORDS.NEXT_ARTICLE.y);
+        await this._sleep(CONFIG.TIMEOUTS.NEXT_ARTICLE_LOAD);
+        return true;
     }
 
     async _sleep(ms) {
