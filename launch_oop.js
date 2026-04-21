@@ -9,7 +9,9 @@ const CONFIG = {
     LIST_URL: 'https://hiroba-sp.yomu-point.jp/magazineList/',
     MAX_ARTICLES: 150,
     COORDS: {
-        SECOND_ARTICLE: { x: 540, y: 1800 }
+        SECOND_ARTICLE: { x: 540, y: 1800 },
+        CONTINUE_READING: { x: 540, y: 2000 },
+        NEXT_ARTICLE: { x: 792, y: 1232 }
     },
     TIMEOUTS: {
         INITIAL_LOAD: 12000,
@@ -59,16 +61,19 @@ class AndroidDevice {
         this.client = client;
     }
 
-    async sleep(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
-    }
-
     tap(x, y) {
         this.client.execute(`input tap ${x} ${y}`);
     }
 
     swipe(x1, y1, x2, y2, duration = 500) {
         this.client.execute(`input swipe ${x1} ${y1} ${x2} ${y2} ${duration}`);
+    }
+
+    scrollDown() {
+        // スクロールの「方法」をこのメソッドに隠蔽します
+        for (let i = 0; i < 2; i++) {
+            this.swipe(540, 1600, 540, 400);
+        }
     }
 
     openUrl(url, packageName) {
@@ -109,7 +114,7 @@ class YomitameBot {
     async start() {
         console.log('===== オブジェクト指向版 自動読了システム =====');
         this.device.openUrl(CONFIG.LIST_URL, CONFIG.BRAVE_PKG);
-        await this.device.sleep(CONFIG.TIMEOUTS.INITIAL_LOAD);
+        await this._sleep(CONFIG.TIMEOUTS.INITIAL_LOAD);
 
         // 記事を開く
         await this.openSecondArticle();
@@ -135,56 +140,55 @@ class YomitameBot {
         console.log('2番目の記事を開いています...');
         const { x, y } = CONFIG.COORDS.SECOND_ARTICLE;
         this.device.tap(x, y);
-        await this.device.sleep(CONFIG.TIMEOUTS.ARTICLE_LOAD);
+        await this._sleep(CONFIG.TIMEOUTS.ARTICLE_LOAD);
     }
 
     async completeArticle() {
         console.log('記事を読んでいます...');
-        for (let retry = 0; retry < 20; retry++) {
-            await this.scrollDown();
-            // await this.device.sleep(CONFIG.TIMEOUTS.UI_STABILIZE);
+        for (let retry = 0; retry < 10; retry++) {
+            console.log(`スクロール中...(${retry + 1}回目)`);
+            this.device.scrollDown();
+            await this._sleep(CONFIG.TIMEOUTS.ACTION_WAIT);
 
-            // スタンプボタンの検知
-            const stampBtn = await this.device.findCoordinates("スタンプGET");
-            // if (stampBtn && stampBtn.y > 300) {
-            if (stampBtn) {
-                console.log('★スタンプを取得しました！');
-                this.device.tap(stampBtn.x, stampBtn.y);
-                return true;
-            }
+            // 動作調整用
+            // console.log出力の座標で，CONFIG.COORDS.CONTINUE_READING.xと.yを調整する．
+            // xは画面の左上を原点として右方向の座標，yは左上を原点として下方向の座標．
+            // xは特定の座標になるはず，yは出力座標の平均値を指定すればよいと思う． 
+            // const continueBtn = await this.device.findCoordinates("続きを読む");
+            // console.log(continueBtn.x, continueBtn.y);
 
-            // 続きを読むボタンの検知
-            const moreBtn = await this.device.findCoordinates("続きを読む");
-            // if (moreBtn && moreBtn.y > 300) {
-            if (moreBtn) {
-                console.log('「続きを読む」をタップします。');
-                this.device.tap(moreBtn.x, moreBtn.y);
-                await this.device.sleep(CONFIG.TIMEOUTS.ACTION_WAIT);
-            }
+            // 「続きを読む」もしくは「スタンプGET」ボタンをタップ 
+            this.device.tap(CONFIG.COORDS.CONTINUE_READING.x, CONFIG.COORDS.CONTINUE_READING.y);
+            await this._sleep(CONFIG.TIMEOUTS.ACTION_WAIT);
+
         }
-        return false;
+        return true;
     }
 
     async moveToNextArticle() {
-        await this.device.sleep(CONFIG.TIMEOUTS.STAMP_CARD_LOAD);
+        await this._sleep(CONFIG.TIMEOUTS.STAMP_CARD_LOAD);
 
         const nextBtn = await this.device.findCoordinates("次の記事を読む");
         if (nextBtn) {
+
+            // 動作調整用
+            // console.log出力の座標で，CONFIG.COORDS.NEXT_ARTICLE.xと.yを調整する．
+            // xは画面の左上を原点として右方向の座標，yは左上を原点として下方向の座標．
+            // xとyは特定の座標になるはず． 
+            // console.log(nextBtn.x, nextBtn.y);
+
             console.log('▶ 次の記事へ進みます');
-            this.device.tap(nextBtn.x, nextBtn.y);
-            await this.device.sleep(CONFIG.TIMEOUTS.NEXT_ARTICLE_LOAD);
+            this.device.tap(CONFIG.COORDS.NEXT_ARTICLE.x, CONFIG.COORDS.NEXT_ARTICLE.y);
+            await this._sleep(CONFIG.TIMEOUTS.NEXT_ARTICLE_LOAD);
             return true;
         }
         return false;
     }
 
-    async scrollDown() {
-        // スクロールの「方法」をこのメソッドに隠蔽します
-        for (let i = 0; i < 2; i++) {
-            this.device.swipe(540, 1600, 540, 400);
-        }
-        await this.device.sleep(CONFIG.TIMEOUTS.ACTION_WAIT);
+    async _sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
     }
+
 }
 
 /**
