@@ -9,7 +9,7 @@ const CONFIG = {
     LIST_URL: 'https://hiroba-sp.yomu-point.jp/magazineList/',
     MAX_ARTICLES: 150,
     COORDS: {
-        SECOND_ARTICLE: { x: 540, y: 1800 },
+        FIRST_ARTICLE: { x: 540, y: 1500 },
         CONTINUE_READING: { x: 540, y: 2000 },
         NEXT_ARTICLE: { x: 792, y: 1232 }
     },
@@ -29,7 +29,7 @@ const CONFIG = {
  * 「外部システム（OS、コマンドライン）との通信」という責務を負います。
  */
 class AdbClient {
-    execute(command, options = {}) {
+    static execute(command, options = {}) {
         try {
             return execSync(`adb shell ${command}`, {
                 encoding: 'utf-8',
@@ -42,7 +42,7 @@ class AdbClient {
         }
     }
 
-    checkConnection() {
+    static checkConnection() {
         try {
             execSync('adb devices');
         } catch (e) {
@@ -57,34 +57,30 @@ class AdbClient {
  * xml解析などのロジックもここにカプセル化し、呼び出し側が「ADBのコマンド」を意識しなくて済むようにします。
  */
 class AndroidDevice {
-    constructor(client) {
-        this.client = client;
+    static tap(x, y) {
+        AdbClient.execute(`input tap ${x} ${y}`);
     }
 
-    tap(x, y) {
-        this.client.execute(`input tap ${x} ${y}`);
+    static swipe(x1, y1, x2, y2, duration = 500) {
+        AdbClient.execute(`input swipe ${x1} ${y1} ${x2} ${y2} ${duration}`);
     }
 
-    swipe(x1, y1, x2, y2, duration = 500) {
-        this.client.execute(`input swipe ${x1} ${y1} ${x2} ${y2} ${duration}`);
-    }
-
-    scrollDown() {
+    static scrollDown() {
         // スクロールの「方法」をこのメソッドに隠蔽します
         for (let i = 0; i < 2; i++) {
             this.swipe(540, 1600, 540, 400);
         }
     }
 
-    openUrl(url, packageName) {
-        this.client.execute(`am start -a android.intent.action.VIEW -d "${url}" ${packageName}`);
+    static openUrl(url, packageName) {
+        AdbClient.execute(`am start -a android.intent.action.VIEW -d "${url}" ${packageName}`);
     }
 
     /**
      * 画面のUI構造(XML)を取得し、特定のテキストを持つ要素の座標を返します。
      */
-    async findCoordinates(text) {
-        const xml = this.client.execute('-t -t uiautomator dump /dev/tty');
+    static async findCoordinates(text) {
+        const xml = AdbClient.execute('-t -t uiautomator dump /dev/tty');
         if (!xml) return null;
 
         const regexText = new RegExp(`text="${text}"[^>]*bounds="\\[(\\d+),(\\d+)\\]\\[(\\d+),(\\d+)\\]"`);
@@ -107,28 +103,25 @@ class AndroidDevice {
  * デバイスが「どう動くか」ではなく、アプリケーションとして「何を達成するか」に焦点を当てます。
  */
 class YomitameBot {
-    constructor(device) {
-        this.device = device;
-    }
 
-    async start() {
+    static async start() {
         console.log('===== オブジェクト指向版 自動読了システム =====');
-        this.device.openUrl(CONFIG.LIST_URL, CONFIG.BRAVE_PKG);
-        await this._sleep(CONFIG.TIMEOUTS.INITIAL_LOAD);
+        AndroidDevice.openUrl(CONFIG.LIST_URL, CONFIG.BRAVE_PKG);
+        await YomitameBot.#sleep(CONFIG.TIMEOUTS.INITIAL_LOAD);
 
         // 記事を開く
-        await this.openSecondArticle();
+        await YomitameBot.openFirstArticle();
 
         for (let i = 1; i <= CONFIG.MAX_ARTICLES; i++) {
             console.log(`\n[Article ${i}/${CONFIG.MAX_ARTICLES}]`);
 
-            const success = await this.completeArticle();
+            const success = await YomitameBot.completeArticle();
             if (!success) {
                 console.error('記事の読了に失敗しました。中断します。');
                 break;
             }
 
-            const moved = await this.moveToNextArticle();
+            const moved = await YomitameBot.moveToNextArticle();
             if (!moved) {
                 console.log('次の記事が見つかりません。完了しました。');
                 break;
@@ -136,19 +129,19 @@ class YomitameBot {
         }
     }
 
-    async openSecondArticle() {
-        console.log('2番目の記事を開いています...');
-        const { x, y } = CONFIG.COORDS.SECOND_ARTICLE;
-        this.device.tap(x, y);
-        await this._sleep(CONFIG.TIMEOUTS.ARTICLE_LOAD);
+    static async openFirstArticle() {
+        console.log('最初の記事を開いています...');
+        const { x, y } = CONFIG.COORDS.FIRST_ARTICLE;
+        AndroidDevice.tap(x, y);
+        await YomitameBot.#sleep(CONFIG.TIMEOUTS.ARTICLE_LOAD);
     }
 
-    async completeArticle() {
+    static async completeArticle() {
         console.log('記事を読んでいます...');
         for (let retry = 0; retry < 10; retry++) {
             console.log(`スクロール中...(${retry + 1}回目)`);
-            this.device.scrollDown();
-            await this._sleep(CONFIG.TIMEOUTS.ACTION_WAIT);
+            AndroidDevice.scrollDown();
+            await YomitameBot.#sleep(CONFIG.TIMEOUTS.ACTION_WAIT);
 
             // 動作調整用
             // console.log出力の座標で，CONFIG.COORDS.CONTINUE_READING.xと.yを調整する．
@@ -158,15 +151,15 @@ class YomitameBot {
             // console.log(continueBtn.x, continueBtn.y);
 
             // 「続きを読む」もしくは「スタンプGET」ボタンをタップ 
-            this.device.tap(CONFIG.COORDS.CONTINUE_READING.x, CONFIG.COORDS.CONTINUE_READING.y);
-            await this._sleep(CONFIG.TIMEOUTS.ACTION_WAIT);
+            AndroidDevice.tap(CONFIG.COORDS.CONTINUE_READING.x, CONFIG.COORDS.CONTINUE_READING.y);
+            await YomitameBot.#sleep(CONFIG.TIMEOUTS.ACTION_WAIT);
 
         }
         return true;
     }
 
-    async moveToNextArticle() {
-        await this._sleep(CONFIG.TIMEOUTS.STAMP_CARD_LOAD);
+    static async moveToNextArticle() {
+        await YomitameBot.#sleep(CONFIG.TIMEOUTS.STAMP_CARD_LOAD);
 
         // 動作調整用
         // console.log出力の座標で，CONFIG.COORDS.NEXT_ARTICLE.xと.yを調整する．
@@ -175,12 +168,12 @@ class YomitameBot {
         // console.log(nextBtn.x, nextBtn.y);
 
         console.log('▶ 次の記事へ進みます');
-        this.device.tap(CONFIG.COORDS.NEXT_ARTICLE.x, CONFIG.COORDS.NEXT_ARTICLE.y);
-        await this._sleep(CONFIG.TIMEOUTS.NEXT_ARTICLE_LOAD);
+        AndroidDevice.tap(CONFIG.COORDS.NEXT_ARTICLE.x, CONFIG.COORDS.NEXT_ARTICLE.y);
+        await YomitameBot.#sleep(CONFIG.TIMEOUTS.NEXT_ARTICLE_LOAD);
         return true;
     }
 
-    async _sleep(ms) {
+    static async #sleep(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
 
@@ -192,13 +185,9 @@ class YomitameBot {
  */
 async function main() {
     try {
-        const client = new AdbClient();
-        client.checkConnection();
+        AdbClient.checkConnection();
 
-        const device = new AndroidDevice(client);
-        const bot = new YomitameBot(device);
-
-        await bot.start();
+        await YomitameBot.start();
 
         console.log('\nすべての処理を正常に終了しました。');
     } catch (e) {
